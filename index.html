@@ -1,0 +1,1983 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Soccer Career Simulator</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Outfit', 'sans-serif'],
+                        display: ['Rajdhani', 'sans-serif'],
+                    },
+                    colors: {
+                        fm: {
+                            bg: '#070a12',
+                            card: '#0f172a',
+                            panel: '#1e293b',
+                            border: '#334155',
+                            accent: '#10b981',
+                            accentHover: '#059669',
+                            gold: '#f59e0b',
+                            crimson: '#ef4444',
+                            cyan: '#06b6d4',
+                            indigo: '#6366f1'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #10b981;
+        }
+        .pulse-glow {
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
+        }
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(51, 65, 85, 0.6);
+        }
+    </style>
+</head>
+<body class="bg-fm-bg text-slate-100 font-sans min-h-screen flex flex-col antialiased selection:bg-emerald-500 selection:text-slate-950">
+
+    <!-- MODAL: GOOGLE / GUEST LOGIN -->
+    <div id="modal-login" class="fixed inset-0 bg-slate-950/95 backdrop-blur-md flex items-center justify-center p-4 z-[60]">
+        <div class="bg-fm-card border border-fm-border rounded-2xl max-w-md w-full p-8 space-y-6 shadow-2xl text-center">
+            <div class="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto border border-emerald-500/30">
+                <i class="fa-solid fa-futbol text-4xl text-emerald-400"></i>
+            </div>
+            <div class="space-y-2">
+                <h2 class="font-display text-3xl font-extrabold text-white">Soccer Career Sim</h2>
+                <p class="text-sm text-slate-400">Sign in to save your progress or play directly in Guest Mode.</p>
+            </div>
+            <button onclick="window.firebaseLogin()" class="w-full flex items-center justify-center gap-3 bg-white hover:bg-slate-100 text-slate-900 font-bold py-3 rounded-xl transition shadow-lg">
+                <i class="fa-brands fa-google text-rose-500"></i>
+                Sign in with Google
+            </button>
+            <button onclick="window.playAsGuest()" class="w-full flex items-center justify-center gap-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold py-3 rounded-xl transition shadow-lg">
+                <i class="fa-solid fa-user-secret"></i>
+                Continue as Guest (Local Save)
+            </button>
+            <div id="login-error-msg" class="hidden text-rose-400 text-xs font-semibold mt-2"></div>
+        </div>
+    </div>
+
+    <!-- TOP HEADER / MANAGER BAR -->
+    <header class="bg-fm-card/90 border-b border-fm-border px-4 py-2.5 flex flex-wrap items-center justify-between gap-4 z-20 sticky top-0 shadow-lg">
+        <!-- Player & Club Info -->
+        <div class="flex items-center gap-3">
+            <div id="header-club-badge" class="w-10 h-10 rounded-full bg-emerald-950 border border-emerald-500/50 flex items-center justify-center font-display text-lg font-bold text-emerald-400 shadow-inner">
+                LB
+            </div>
+            <div>
+                <div class="flex items-center gap-2">
+                    <h1 id="header-player-name" class="font-display text-xl font-bold tracking-wide text-white">Alex Hunter</h1>
+                    <span id="header-position" class="bg-emerald-500/20 text-emerald-400 text-xs px-2 py-0.5 rounded font-mono font-bold border border-emerald-500/30">ST</span>
+                </div>
+                <p id="header-club-name" class="text-xs text-slate-400 font-medium">London Blues • Premier League</p>
+            </div>
+        </div>
+
+        <!-- Metrics Summary -->
+        <div class="flex items-center gap-3 text-xs">
+            <div class="bg-slate-900/80 px-3 py-1.5 rounded-lg border border-slate-800 flex items-center gap-2">
+                <i class="fa-solid fa-face-smile text-amber-400"></i>
+                <div>
+                    <div class="text-[10px] text-slate-400 uppercase font-semibold">Morale</div>
+                    <div id="metric-morale" class="font-bold text-amber-400">85%</div>
+                </div>
+            </div>
+
+            <div class="bg-slate-900/80 px-3 py-1.5 rounded-lg border border-slate-800 flex items-center gap-2">
+                <i class="fa-solid fa-bolt text-emerald-400"></i>
+                <div>
+                    <div class="text-[10px] text-slate-400 uppercase font-semibold">Fitness</div>
+                    <div id="metric-energy" class="font-bold text-emerald-400">92%</div>
+                </div>
+            </div>
+
+            <div class="bg-slate-900/80 px-3 py-1.5 rounded-lg border border-slate-800 flex items-center gap-2">
+                <i class="fa-solid fa-user-tie text-cyan-400"></i>
+                <div>
+                    <div class="text-[10px] text-slate-400 uppercase font-semibold">Boss Trust</div>
+                    <div id="metric-trust" class="font-bold text-cyan-400">78%</div>
+                </div>
+            </div>
+
+            <div class="hidden sm:flex bg-slate-900/80 px-3 py-1.5 rounded-lg border border-slate-800 items-center gap-3">
+                <div>
+                    <div class="text-[10px] text-slate-400 uppercase font-semibold">Value</div>
+                    <div id="metric-value" class="font-bold text-slate-200">€14.5M</div>
+                </div>
+                <div class="w-px h-6 bg-slate-800"></div>
+                <div>
+                    <div class="text-[10px] text-slate-400 uppercase font-semibold">Wage</div>
+                    <div id="metric-wage" class="font-bold text-emerald-400">€25K/wk</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Season / Controls -->
+        <div class="flex items-center gap-3">
+            <div class="text-right">
+                <div id="header-season-display" class="font-display font-semibold text-slate-200 text-sm">Season 1, Week 1</div>
+            </div>
+            <button onclick="saveGame()" class="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-700 transition" title="Save Progress">
+                <i class="fa-solid fa-floppy-disk"></i>
+            </button>
+            <button onclick="resetCareer()" class="p-2 bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 rounded-lg border border-rose-800/50 transition" title="New Career">
+                <i class="fa-solid fa-rotate-left"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- MAIN APP LAYOUT -->
+    <div class="flex-1 flex overflow-hidden">
+        
+        <!-- SIDEBAR NAVIGATION -->
+        <aside class="w-16 md:w-60 bg-fm-card border-r border-fm-border flex flex-col justify-between py-4 z-10 shrink-0">
+            <nav class="space-y-1 px-2">
+                <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-white bg-slate-800 transition text-left font-medium">
+                    <i class="fa-solid fa-house w-5 text-center text-lg"></i>
+                    <span class="hidden md:inline">Dashboard</span>
+                </button>
+
+                <button onclick="switchTab('calendar')" id="nav-calendar" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/60 transition text-left font-medium">
+                    <i class="fa-solid fa-calendar-days w-5 text-center text-lg text-indigo-400"></i>
+                    <span class="hidden md:inline">Season Calendar</span>
+                </button>
+
+                <button onclick="switchTab('matchday')" id="nav-matchday" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/60 transition text-left font-medium">
+                    <i class="fa-solid fa-futbol w-5 text-center text-lg text-emerald-400"></i>
+                    <span class="hidden md:inline">Matchday</span>
+                </button>
+
+                <button onclick="switchTab('training')" id="nav-training" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/60 transition text-left font-medium">
+                    <i class="fa-solid fa-dumbbell w-5 text-center text-lg text-amber-400"></i>
+                    <span class="hidden md:inline">Training & Attributes</span>
+                </button>
+
+                <button onclick="switchTab('transfers')" id="nav-transfers" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/60 transition text-left font-medium">
+                    <i class="fa-solid fa-handshake w-5 text-center text-lg text-cyan-400"></i>
+                    <span class="hidden md:inline">Transfers & Club</span>
+                </button>
+
+                <button onclick="switchTab('career')" id="nav-career" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/60 transition text-left font-medium">
+                    <i class="fa-solid fa-trophy w-5 text-center text-lg text-yellow-400"></i>
+                    <span class="hidden md:inline">Career Stats</span>
+                </button>
+
+                <button onclick="switchTab('press')" id="nav-press" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/60 transition text-left font-medium">
+                    <i class="fa-solid fa-newspaper w-5 text-center text-lg text-rose-400"></i>
+                    <span class="hidden md:inline">Off-Pitch & Press</span>
+                </button>
+            </nav>
+
+            <div class="px-3 pt-4 border-t border-slate-800/80 space-y-2">
+                <button id="btn-sound-toggle" onclick="toggleAudio()" class="w-full flex items-center justify-between px-3 py-2 text-xs text-slate-400 hover:text-slate-200 bg-slate-900 rounded-lg border border-slate-800">
+                    <span class="hidden md:inline">SFX Audio</span>
+                    <i id="sound-icon" class="fa-solid fa-volume-high text-emerald-400"></i>
+                </button>
+                <div class="hidden md:block text-[11px] text-slate-500 text-center font-mono">FM Engine v2.6.1</div>
+            </div>
+        </aside>
+
+        <!-- VIEW PANELS -->
+        <main class="flex-1 overflow-y-auto p-4 md:p-6 bg-fm-bg relative">
+
+            <!-- TAB 1: DASHBOARD -->
+            <section id="tab-dashboard" class="tab-content space-y-6">
+                <div class="grid grid-cols-1 xl:grid-cols-4 gap-6">
+                    <!-- Banner Next Match -->
+                    <div class="xl:col-span-3 bg-gradient-to-r from-slate-900 via-slate-800 to-emerald-950 border border-slate-700/60 rounded-2xl p-6 shadow-xl relative overflow-hidden">
+                        <div class="absolute -right-10 -bottom-10 opacity-10 text-emerald-400 text-9xl">
+                            <i class="fa-solid fa-futbol"></i>
+                        </div>
+                        <div class="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
+                            <div class="space-y-2 text-center md:text-left">
+                                <span class="bg-emerald-500/20 text-emerald-400 font-semibold text-xs px-3 py-1 rounded-full border border-emerald-500/30 uppercase tracking-wider">Upcoming Fixture</span>
+                                <h2 id="dash-next-match-title" class="font-display text-2xl md:text-3xl font-bold text-white">London Blues vs Red Devils</h2>
+                                <p id="dash-next-match-sub" class="text-slate-300 text-sm">Premier League • Week 1</p>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <button onclick="advanceWeek(true)" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-3 rounded-xl border border-slate-700 font-semibold text-sm transition flex items-center gap-2">
+                                    <i class="fa-solid fa-forward"></i> Rest / Skip Week
+                                </button>
+                                <button onclick="switchTab('matchday')" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold px-6 py-3 rounded-xl shadow-lg transition flex items-center gap-2">
+                                    <i class="fa-solid fa-play"></i> Play Match
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Player Snapshot -->
+                    <div class="xl:col-span-1 bg-fm-card border border-fm-border rounded-2xl p-5 shadow-xl flex flex-col justify-center items-center space-y-4">
+                        <div class="text-center w-full pb-3 border-b border-slate-800">
+                            <div class="text-slate-400 text-xs uppercase font-bold tracking-wider mb-1">Overall Rating</div>
+                            <div id="dash-ovr" class="font-display text-5xl font-extrabold text-emerald-400">74</div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4 w-full text-center">
+                            <div>
+                                <div class="text-[10px] text-slate-400 uppercase font-bold">Age</div>
+                                <div id="dash-age" class="font-bold text-white text-lg">18</div>
+                            </div>
+                            <div>
+                                <div class="text-[10px] text-slate-400 uppercase font-bold">Morale</div>
+                                <div id="dash-morale" class="font-bold text-amber-400 text-lg">85%</div>
+                            </div>
+                            <div class="col-span-2">
+                                <div class="text-[10px] text-slate-400 uppercase font-bold">Transfer Value</div>
+                                <div id="dash-value" class="font-bold text-slate-200 text-lg">€14.5M</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Form & Status -->
+                    <div class="bg-fm-card border border-fm-border rounded-xl p-5 space-y-4">
+                        <h3 class="font-display text-lg font-bold text-slate-100 flex items-center gap-2">
+                            <i class="fa-solid fa-chart-line text-emerald-400"></i>
+                            Season Stats
+                        </h3>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="bg-slate-900/80 p-3 rounded-lg border border-slate-800">
+                                <div class="text-xs text-slate-400">Season Goals</div>
+                                <div id="dash-goals" class="font-display text-2xl font-bold text-emerald-400">0</div>
+                            </div>
+                            <div class="bg-slate-900/80 p-3 rounded-lg border border-slate-800">
+                                <div class="text-xs text-slate-400">Assists</div>
+                                <div id="dash-assists" class="font-display text-2xl font-bold text-cyan-400">0</div>
+                            </div>
+                            <div class="bg-slate-900/80 p-3 rounded-lg border border-slate-800">
+                                <div class="text-xs text-slate-400">Avg Rating</div>
+                                <div id="dash-rating" class="font-display text-2xl font-bold text-amber-400">0.0</div>
+                            </div>
+                            <div class="bg-slate-900/80 p-3 rounded-lg border border-slate-800">
+                                <div class="text-xs text-slate-400">MOTM Awards</div>
+                                <div id="dash-motm" class="font-display text-2xl font-bold text-purple-400">0</div>
+                            </div>
+                        </div>
+
+                        <div class="p-3 bg-emerald-950/30 border border-emerald-800/40 rounded-lg flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <i class="fa-solid fa-star text-emerald-400"></i>
+                                <span class="text-sm font-medium text-slate-300">Unspent Attribute XP</span>
+                            </div>
+                            <span id="dash-xp" class="font-display font-bold text-emerald-400 text-lg">150 XP</span>
+                        </div>
+                    </div>
+
+                    <!-- League Table -->
+                    <div class="bg-fm-card border border-fm-border rounded-xl p-5 space-y-3">
+                        <div class="flex items-center justify-between">
+                            <h3 class="font-display text-lg font-bold text-slate-100 flex items-center gap-2">
+                                <i class="fa-solid fa-list-ol text-amber-400"></i>
+                                League Standings (6 Teams)
+                            </h3>
+                            <span class="text-xs text-slate-400 font-mono">10 Matchdays</span>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-xs text-left">
+                                <thead class="text-[10px] text-slate-400 uppercase bg-slate-900/60">
+                                    <tr>
+                                        <th class="p-2">#</th>
+                                        <th class="p-2">Club</th>
+                                        <th class="p-2 text-center">OVR</th>
+                                        <th class="p-2 text-center">P</th>
+                                        <th class="p-2 text-center">GD</th>
+                                        <th class="p-2 text-right">Pts</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="dash-league-tbody" class="divide-y divide-slate-800 font-medium">
+                                    <!-- Dynamic -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Club News Feed -->
+                    <div class="bg-fm-card border border-fm-border rounded-xl p-5 space-y-3">
+                        <h3 class="font-display text-lg font-bold text-slate-100 flex items-center gap-2">
+                            <i class="fa-solid fa-inbox text-cyan-400"></i>
+                            Club News & Messages
+                        </h3>
+                        <div id="dash-news-feed" class="space-y-3 max-h-[220px] overflow-y-auto pr-1">
+                            <!-- Dynamic -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 2: SEASON CALENDAR -->
+            <section id="tab-calendar" class="tab-content hidden space-y-6">
+                <div class="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-4">
+                    <div>
+                        <h2 class="font-display text-2xl font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-calendar-days text-indigo-400"></i> Full Season Fixture Calendar
+                        </h2>
+                        <p class="text-xs text-slate-400">Double Round-Robin Schedule: 6 Teams • 10 Rounds • 30 Matches Total</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs text-slate-400">Filter Week:</span>
+                        <select id="calendar-week-filter" onchange="renderCalendarUI()" class="bg-slate-900 border border-slate-700 text-xs rounded-lg px-3 py-1.5 text-white">
+                            <option value="all">All Weeks (1 - 10)</option>
+                            <option value="1">Week 1</option>
+                            <option value="2">Week 2</option>
+                            <option value="3">Week 3</option>
+                            <option value="4">Week 4</option>
+                            <option value="5">Week 5</option>
+                            <option value="6">Week 6</option>
+                            <option value="7">Week 7</option>
+                            <option value="8">Week 8</option>
+                            <option value="9">Week 9</option>
+                            <option value="10">Week 10</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="calendar-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- Dynamic Fixtures Cards -->
+                </div>
+            </section>
+
+            <!-- TAB 3: MATCHDAY -->
+            <section id="tab-matchday" class="tab-content hidden space-y-4">
+                <!-- Scoreboard -->
+                <div class="bg-fm-card border border-fm-border rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4 shadow-xl">
+                    <div class="flex items-center gap-4 w-1/3 justify-start">
+                        <div id="match-home-logo" class="w-12 h-12 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center font-display text-xl font-bold text-emerald-400">LB</div>
+                        <div>
+                            <div id="match-home-name" class="font-display text-lg font-bold">London Blues</div>
+                            <div id="match-home-label" class="text-xs text-slate-400">Home</div>
+                        </div>
+                    </div>
+
+                    <div class="text-center px-6 py-2 bg-slate-900 rounded-xl border border-slate-800">
+                        <div id="match-timer" class="font-mono text-emerald-400 text-sm font-bold tracking-widest">00:00</div>
+                        <div class="font-display text-3xl font-extrabold tracking-wider my-0.5">
+                            <span id="match-score-home">0</span> - <span id="match-score-away">0</span>
+                        </div>
+                        <div id="match-status-label" class="text-[10px] uppercase font-bold text-slate-400 tracking-widest">PRE-MATCH</div>
+                    </div>
+
+                    <div class="flex items-center gap-4 w-1/3 justify-end text-right">
+                        <div>
+                            <div id="match-away-name" class="font-display text-lg font-bold">Red Devils</div>
+                            <div id="match-away-label" class="text-xs text-slate-400">Away</div>
+                        </div>
+                        <div id="match-away-logo" class="w-12 h-12 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center font-display text-xl font-bold text-rose-400">RD</div>
+                    </div>
+                </div>
+
+                <!-- Match Controls -->
+                <div class="bg-fm-card border border-fm-border rounded-2xl p-4 flex flex-wrap items-center justify-between shadow-xl gap-4">
+                    <div class="flex items-center gap-2">
+                        <button id="btn-start-match" onclick="startMatchSimulation()" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-5 py-2 rounded-lg text-sm transition flex items-center gap-2 shadow-lg">
+                            <i class="fa-solid fa-play"></i> Start Kickoff
+                        </button>
+                        <button id="btn-quick-sim" onclick="quickSimMatch()" class="bg-cyan-600 hover:bg-cyan-500 text-white font-bold px-4 py-2 rounded-lg text-sm transition flex items-center gap-2 shadow-lg">
+                            <i class="fa-solid fa-forward-fast"></i> Quick Sim
+                        </button>
+                        <button id="btn-pause-match" onclick="togglePauseMatch()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2 rounded-lg text-sm border border-slate-700 hidden">
+                            <i class="fa-solid fa-pause"></i> Pause
+                        </button>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs text-slate-400 mr-1">Speed:</span>
+                        <button onclick="setSpeed(1)" id="btn-speed-1" class="speed-btn bg-emerald-500 text-slate-950 font-bold px-3 py-1 rounded text-xs">1x</button>
+                        <button onclick="setSpeed(2)" id="btn-speed-2" class="speed-btn bg-slate-800 text-slate-300 font-bold px-3 py-1 rounded text-xs">2x</button>
+                        <button onclick="setSpeed(4)" id="btn-speed-4" class="speed-btn bg-slate-800 text-slate-300 font-bold px-3 py-1 rounded text-xs">4x</button>
+                        <button onclick="setSpeed(8)" id="btn-speed-8" class="speed-btn bg-slate-800 text-slate-300 font-bold px-3 py-1 rounded text-xs">8x</button>
+                    </div>
+                </div>
+
+                <!-- Performance & Live Commentary -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-fm-card border border-fm-border rounded-xl p-4 space-y-3">
+                        <h4 class="font-display font-bold text-sm text-slate-200 uppercase tracking-wider flex items-center gap-2">
+                            <i class="fa-solid fa-user-ninja text-emerald-400"></i> Your Match Performance
+                        </h4>
+                        <div class="grid grid-cols-4 gap-2 text-center">
+                            <div class="bg-slate-900 p-2 rounded border border-slate-800">
+                                <div class="text-[10px] text-slate-400">Rating</div>
+                                <div id="live-rating" class="font-bold text-emerald-400 text-lg">6.5</div>
+                            </div>
+                            <div class="bg-slate-900 p-2 rounded border border-slate-800">
+                                <div class="text-[10px] text-slate-400">Goals</div>
+                                <div id="live-goals" class="font-bold text-white text-lg">0</div>
+                            </div>
+                            <div class="bg-slate-900 p-2 rounded border border-slate-800">
+                                <div class="text-[10px] text-slate-400">Assists</div>
+                                <div id="live-assists" class="font-bold text-white text-lg">0</div>
+                            </div>
+                            <div class="bg-slate-900 p-2 rounded border border-slate-800">
+                                <div class="text-[10px] text-slate-400">Shots</div>
+                                <div id="live-shots" class="font-bold text-white text-lg">0</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-fm-card border border-fm-border rounded-xl p-4 space-y-2">
+                        <h4 class="font-display font-bold text-sm text-slate-200 uppercase tracking-wider flex items-center gap-2">
+                            <i class="fa-solid fa-microphone text-amber-400"></i> Live Commentary Log
+                        </h4>
+                        <div id="commentary-log" class="h-56 overflow-y-auto space-y-2 pr-1 font-mono text-xs">
+                            <div class="text-slate-500 italic">Match will begin shortly...</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 4: TRAINING & ATTRIBUTES -->
+            <section id="tab-training" class="tab-content hidden space-y-6">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-fm-card border border-fm-border rounded-2xl p-6 flex flex-col items-center justify-center space-y-4">
+                        <div class="w-full flex items-center justify-between">
+                            <h3 class="font-display text-xl font-bold text-white flex items-center gap-2">
+                                <i class="fa-solid fa-chart-pie text-emerald-400"></i> Attribute Radar
+                            </h3>
+                            <span id="train-overall-badge" class="bg-emerald-500/20 text-emerald-400 font-bold px-3 py-1 rounded-full border border-emerald-500/40 text-sm">
+                                OVR: 74
+                            </span>
+                        </div>
+                        <div class="w-full max-w-sm aspect-square">
+                            <canvas id="attributes-radar-chart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="bg-fm-card border border-fm-border rounded-2xl p-6 space-y-5">
+                        <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+                            <div>
+                                <h3 class="font-display text-xl font-bold text-white">Training Center</h3>
+                                <p class="text-xs text-slate-400">Invest earned XP into individual attributes</p>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-xs text-slate-400">Available XP</div>
+                                <div id="train-available-xp" class="font-display font-extrabold text-2xl text-emerald-400">150 XP</div>
+                            </div>
+                        </div>
+
+                        <div class="space-y-3" id="drills-list">
+                            <!-- Dynamic Drills -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 5: TRANSFERS & CONTRACT -->
+            <section id="tab-transfers" class="tab-content hidden space-y-6">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="bg-fm-card border border-fm-border rounded-2xl p-6 space-y-5">
+                        <h3 class="font-display text-xl font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-chart-line text-cyan-400"></i> Market Reputation
+                        </h3>
+                        <div class="space-y-4">
+                            <div>
+                                <div class="flex justify-between text-xs font-semibold mb-1">
+                                    <span class="text-slate-400">Scout Hype Index</span>
+                                    <span id="transfer-interest-val" class="text-emerald-400">65%</span>
+                                </div>
+                                <div class="w-full bg-slate-900 rounded-full h-3 overflow-hidden border border-slate-800">
+                                    <div id="transfer-interest-bar" class="bg-emerald-500 h-full rounded-full transition-all duration-500" style="width: 65%;"></div>
+                                </div>
+                            </div>
+
+                            <div class="p-4 bg-slate-900/80 rounded-xl border border-slate-800 space-y-2 text-xs">
+                                <div class="flex justify-between text-slate-400">
+                                    <span>Contract Term:</span>
+                                    <span class="font-bold text-slate-200">3 Years</span>
+                                </div>
+                                <div class="flex justify-between text-slate-400">
+                                    <span>Squad Role:</span>
+                                    <span id="transfer-squad-role" class="font-bold text-emerald-400">Key Starter</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="lg:col-span-2 bg-fm-card border border-fm-border rounded-2xl p-6 space-y-4">
+                        <h3 class="font-display text-xl font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-envelope-open-text text-amber-400"></i> Transfer Inquiries & Offers
+                        </h3>
+                        <div id="transfer-offers-list" class="space-y-3">
+                            <!-- Dynamic Offers -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 6: CAREER STATS -->
+            <section id="tab-career" class="tab-content hidden space-y-6">
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="bg-fm-card border border-fm-border p-5 rounded-xl text-center space-y-1">
+                        <div class="text-slate-400 text-xs uppercase tracking-wider font-semibold">Total Apps</div>
+                        <div id="career-total-apps" class="font-display text-3xl font-extrabold text-white">0</div>
+                    </div>
+                    <div class="bg-fm-card border border-fm-border p-5 rounded-xl text-center space-y-1">
+                        <div class="text-slate-400 text-xs uppercase tracking-wider font-semibold">Total Goals</div>
+                        <div id="career-total-goals" class="font-display text-3xl font-extrabold text-emerald-400">0</div>
+                    </div>
+                    <div class="bg-fm-card border border-fm-border p-5 rounded-xl text-center space-y-1">
+                        <div class="text-slate-400 text-xs uppercase tracking-wider font-semibold">Total Assists</div>
+                        <div id="career-total-assists" class="font-display text-3xl font-extrabold text-cyan-400">0</div>
+                    </div>
+                    <div class="bg-fm-card border border-fm-border p-5 rounded-xl text-center space-y-1">
+                        <div class="text-slate-400 text-xs uppercase tracking-wider font-semibold">MOTM Awards</div>
+                        <div id="career-total-trophies" class="font-display text-3xl font-extrabold text-amber-400">0</div>
+                    </div>
+                </div>
+
+                <div class="bg-fm-card border border-fm-border rounded-2xl p-6 space-y-4">
+                    <h3 class="font-display text-xl font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-clock-rotate-left text-slate-400"></i> Season Match Log
+                    </h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-xs text-left">
+                            <thead class="text-[10px] text-slate-400 uppercase bg-slate-900/80">
+                                <tr>
+                                    <th class="p-3">Week</th>
+                                    <th class="p-3">Opponent</th>
+                                    <th class="p-3 text-center">Score</th>
+                                    <th class="p-3 text-center">G</th>
+                                    <th class="p-3 text-center">A</th>
+                                    <th class="p-3 text-center">Rating</th>
+                                </tr>
+                            </thead>
+                            <tbody id="career-history-tbody" class="divide-y divide-slate-800 font-medium">
+                                <tr>
+                                    <td colspan="6" class="p-4 text-center text-slate-500 italic">No matches played yet.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 7: OFF-PITCH & PRESS -->
+            <section id="tab-press" class="tab-content hidden space-y-6">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-fm-card border border-fm-border rounded-2xl p-6 space-y-4">
+                        <h3 class="font-display text-xl font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-microphone-lines text-rose-400"></i> Press Room & Interviews
+                        </h3>
+                        <p class="text-xs text-slate-400">Answers impact Manager Trust, Morale, and Transfer Value (Limit 1 per week).</p>
+                        
+                        <div id="press-scenario-card" class="bg-slate-900/90 border border-slate-800 p-5 rounded-xl space-y-4">
+                            <div class="flex items-center gap-3 text-amber-400 font-semibold text-xs">
+                                <i class="fa-solid fa-circle-question"></i>
+                                <span>Media Question</span>
+                            </div>
+                            <h4 id="press-question-text" class="font-display text-lg font-bold text-slate-100">
+                                "You've been in great training shape. Are you expecting to be the first name on the team sheet?"
+                            </h4>
+                            <div id="press-options-container" class="space-y-2 pt-2">
+                                <!-- Options -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-fm-card border border-fm-border rounded-2xl p-6 space-y-4">
+                        <h3 class="font-display text-xl font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-hashtag text-cyan-400"></i> Fan Buzz & Social Media
+                        </h3>
+                        <div id="social-media-feed" class="space-y-3 max-h-[360px] overflow-y-auto pr-1">
+                            <!-- Social posts -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- MODAL: MID-GAME DECISION -->
+    <div id="modal-decision" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md hidden items-center justify-center p-4 z-50">
+        <div class="bg-fm-card border-2 border-emerald-500/80 rounded-2xl max-w-xl w-full p-6 space-y-5 shadow-2xl pulse-glow">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div class="flex items-center gap-2 text-emerald-400 font-display font-bold text-lg">
+                    <i class="fa-solid fa-bolt text-xl animate-bounce"></i>
+                    <span>KEY MATCH MOMENT!</span>
+                </div>
+                <div id="decision-minute" class="font-mono bg-emerald-500/20 text-emerald-400 px-3 py-1 rounded-full text-xs font-bold border border-emerald-500/30">
+                    67'
+                </div>
+            </div>
+
+            <div class="space-y-2">
+                <h3 id="decision-title" class="font-display text-2xl font-extrabold text-white">1v1 Counter Attack</h3>
+                <p id="decision-desc" class="text-sm text-slate-300 leading-relaxed">
+                    You break through the offside trap with the ball on your right foot!
+                </p>
+            </div>
+
+            <div id="decision-options" class="space-y-3 pt-2">
+                <!-- Dynamic Options -->
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: POST MATCH SUMMARY -->
+    <div id="modal-post-match" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md hidden items-center justify-center p-4 z-50">
+        <div class="bg-fm-card border border-fm-border rounded-2xl max-w-lg w-full p-6 space-y-5 shadow-2xl text-center">
+            <div class="space-y-2 border-b border-slate-800 pb-4">
+                <span class="bg-slate-800 text-slate-300 text-xs px-3 py-1 rounded-full uppercase font-bold tracking-wider">Full Time Result</span>
+                <h3 id="post-match-score" class="font-display text-3xl font-extrabold text-white mt-2">London Blues 2 - 1 Red Devils</h3>
+            </div>
+
+            <div class="grid grid-cols-3 gap-3 text-center">
+                <div class="bg-slate-900 p-3 rounded-xl border border-slate-800">
+                    <div class="text-xs text-slate-400">Rating</div>
+                    <div id="post-match-rating" class="font-display text-2xl font-bold text-emerald-400">8.4</div>
+                </div>
+                <div class="bg-slate-900 p-3 rounded-xl border border-slate-800">
+                    <div class="text-xs text-slate-400">Goals</div>
+                    <div id="post-match-goals" class="font-display text-2xl font-bold text-white">1</div>
+                </div>
+                <div class="bg-slate-900 p-3 rounded-xl border border-slate-800">
+                    <div class="text-xs text-slate-400">Assists</div>
+                    <div id="post-match-assists" class="font-display text-2xl font-bold text-cyan-400">1</div>
+                </div>
+            </div>
+
+            <div class="p-4 bg-emerald-950/30 border border-emerald-800/40 rounded-xl flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <i class="fa-solid fa-award text-emerald-400 text-xl"></i>
+                    <div class="text-left">
+                        <div class="text-xs text-slate-400">XP Earned</div>
+                        <div id="post-match-xp" class="font-bold text-emerald-400 text-sm">+45 XP</div>
+                    </div>
+                </div>
+                <div id="post-match-motm-badge" class="hidden bg-amber-500/20 text-amber-400 text-xs px-3 py-1 rounded-full border border-amber-500/30 font-bold">
+                    ⭐ MOTM Award
+                </div>
+            </div>
+
+            <button onclick="closePostMatchModal()" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-3 rounded-xl transition">
+                Return to Dashboard
+            </button>
+        </div>
+    </div>
+
+    <!-- MODAL: END OF SEASON SUMMARY -->
+    <div id="modal-end-season" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md hidden items-center justify-center p-4 z-50">
+        <div class="bg-fm-card border-2 border-indigo-500/50 rounded-2xl max-w-xl w-full p-6 space-y-6 shadow-2xl text-center">
+            <div class="w-16 h-16 bg-indigo-500/10 rounded-full flex items-center justify-center mx-auto border border-indigo-500/30">
+                <i class="fa-solid fa-trophy text-3xl text-amber-400"></i>
+            </div>
+            
+            <div class="space-y-2 border-b border-slate-800 pb-4">
+                <h2 id="end-season-title" class="font-display text-3xl font-extrabold text-white">Season 1 Complete!</h2>
+                <p id="end-season-sub" class="text-xs text-slate-400">All 10 fixtures played across the league.</p>
+            </div>
+
+            <div id="end-season-summary-card" class="bg-slate-900/90 p-4 rounded-xl border border-slate-800 text-left space-y-3">
+                <!-- Summary Dynamic Content -->
+            </div>
+
+            <button onclick="startNextSeason()" class="w-full bg-indigo-500 hover:bg-indigo-400 text-white font-extrabold py-3.5 rounded-xl transition shadow-lg">
+                Advance to Next Season
+            </button>
+        </div>
+    </div>
+
+    <!-- MODAL: CHARACTER CREATION (NEW CAREER) -->
+    <div id="modal-creation" class="fixed inset-0 bg-fm-bg flex items-center justify-center p-4 z-[70] hidden">
+        <div class="bg-fm-card/95 backdrop-blur-xl border-2 border-emerald-500/30 rounded-3xl max-w-2xl w-full p-8 md:p-10 space-y-6 shadow-2xl relative overflow-hidden">
+            <div class="text-center space-y-2 border-b border-slate-800 pb-4">
+                <div class="w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto border border-emerald-500/30">
+                    <i class="fa-solid fa-user-plus text-3xl text-emerald-400"></i>
+                </div>
+                <h2 class="font-display text-3xl font-extrabold text-white">Create Your Player</h2>
+                <p class="text-xs text-slate-400">Design your player persona to launch your career.</p>
+            </div>
+
+            <form id="form-creation" onsubmit="handleCareerCreation(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-emerald-400 uppercase mb-1">Player Full Name</label>
+                    <input type="text" id="create-name" value="Alex Hunter" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-emerald-500">
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-emerald-400 uppercase mb-1">Position</label>
+                        <select id="create-position" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white">
+                            <option value="ST">Striker (ST)</option>
+                            <option value="CAM">Attacking Mid (CAM)</option>
+                            <option value="RW">Right Winger (RW)</option>
+                            <option value="CM">Central Mid (CM)</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-emerald-400 uppercase mb-1">Nationality</label>
+                        <select id="create-nationality" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white">
+                            <option value="England">England 🏴󠁧󠁢󠁥󠁮󠁧󠁿</option>
+                            <option value="Spain">Spain 🇪🇸</option>
+                            <option value="Brazil">Brazil 🇧🇷</option>
+                            <option value="France">France 🇫🇷</option>
+                            <option value="Germany">Germany 🇩🇪</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-emerald-400 uppercase mb-1">Starting Club</label>
+                    <select id="create-club" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white">
+                        <option value="Madrid White">Madrid White (92 OVR - Elite)</option>
+                        <option value="Munich Knights">Munich Knights (88 OVR - Great)</option>
+                        <option value="London Blues" selected>London Blues (84 OVR - Good)</option>
+                        <option value="Red Devils">Red Devils (81 OVR - Good)</option>
+                        <option value="Milan Red">Milan Red (77 OVR - Good)</option>
+                        <option value="Milan Blue">Milan Blue (72 OVR - Poor)</option>
+                    </select>
+                </div>
+
+                <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold py-3.5 rounded-xl shadow-lg transition mt-4">
+                    Start Career
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: CUSTOM MESSAGE BOX -->
+    <div id="modal-message" class="fixed inset-0 bg-slate-950/90 backdrop-blur-sm hidden items-center justify-center p-4 z-[110]">
+        <div class="bg-fm-card border border-fm-border rounded-2xl max-w-sm w-full p-6 space-y-4 shadow-2xl text-center">
+            <h3 id="msg-title" class="font-display text-2xl font-bold text-white">Notice</h3>
+            <p id="msg-text" class="text-sm text-slate-300"></p>
+            <div id="msg-actions" class="flex gap-3 justify-center pt-2">
+                <button id="btn-msg-ok" onclick="closeMsgModal()" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 px-6 py-2 rounded-xl font-bold transition">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: CONFIRM RESET -->
+    <div id="modal-confirm" class="fixed inset-0 bg-slate-950/90 backdrop-blur-sm hidden items-center justify-center p-4 z-[110]">
+        <div class="bg-fm-card border border-fm-border rounded-2xl max-w-sm w-full p-6 space-y-4 shadow-2xl text-center">
+            <h3 class="font-display text-2xl font-bold text-rose-500">Reset Career?</h3>
+            <p class="text-sm text-slate-300">Are you sure you want to delete your current career and start over? This cannot be undone.</p>
+            <div class="flex gap-3 justify-center pt-2">
+                <button onclick="closeConfirmModal()" class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-xl font-bold transition">Cancel</button>
+                <button onclick="executeReset()" class="bg-rose-600 hover:bg-rose-500 text-white px-4 py-2 rounded-xl font-bold transition">Yes, Reset</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN JAVASCRIPT LOGIC -->
+    <script>
+        // --- SOUND ENGINE ---
+        class SoundEngine {
+            constructor() {
+                this.ctx = null;
+                this.enabled = true;
+            }
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            }
+            playWhistle() {
+                if (!this.enabled) return;
+                this.init();
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(2400, now);
+                osc.frequency.exponentialRampToValueAtTime(1800, now + 0.25);
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.25);
+            }
+            playGoal() {
+                this.playWhistle();
+            }
+            playClick() {
+                if (!this.enabled) return;
+                this.init();
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(500, now);
+                gain.gain.setValueAtTime(0.08, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.04);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.04);
+            }
+        }
+
+        const soundFx = new SoundEngine();
+
+        function toggleAudio() {
+            soundFx.enabled = !soundFx.enabled;
+            const icon = document.getElementById('sound-icon');
+            if (soundFx.enabled) {
+                icon.className = 'fa-solid fa-volume-high text-emerald-400';
+            } else {
+                icon.className = 'fa-solid fa-volume-xmark text-slate-500';
+            }
+        }
+
+        // --- ALL 6 LEAGUE TEAMS WITH OVERALL RATINGS ---
+        // Categories: Elite (90+), Great (85-90), Good (75-85), Poor (<75)
+        const DEFAULT_TEAMS = [
+            { name: "Madrid White", ovr: 92 },   // Elite
+            { name: "Munich Knights", ovr: 88 }, // Great
+            { name: "London Blues", ovr: 84 },   // Good
+            { name: "Red Devils", ovr: 81 },     // Good
+            { name: "Milan Red", ovr: 77 },      // Good
+            { name: "Milan Blue", ovr: 72 }      // Poor
+        ];
+
+        function getTeamOvr(teamName) {
+            const found = DEFAULT_TEAMS.find(t => t.name === teamName);
+            return found ? found.ovr : 75;
+        }
+
+        // --- GAME STATE ---
+        let gameState = {
+            isCreated: false,
+            player: {
+                name: "Alex Hunter",
+                position: "ST",
+                nationality: "England",
+                club: "London Blues",
+                age: 18,
+                morale: 85,
+                energy: 92,
+                trust: 78,
+                wage: 25000,
+                value: 14500000,
+                xp: 150,
+                attributes: { pace: 78, shooting: 76, passing: 70, dribbling: 74, tackling: 45, stamina: 80, vision: 72, composure: 75 }
+            },
+            career: {
+                season: 1,
+                week: 1,
+                pressAnswered: false,
+                seasonTotals: { apps: 0, goals: 0, assists: 0, ratingSum: 0, motm: 0 },
+                totals: { apps: 0, goals: 0, assists: 0, ratingSum: 0, motm: 0, trophies: 0 },
+                matchHistory: []
+            },
+            league: DEFAULT_TEAMS.map(t => ({ name: t.name, ovr: t.ovr, pts: 0, p: 0, gf: 0, ga: 0, wins: 0, draws: 0, losses: 0 })),
+            schedule: [],
+            news: [
+                { title: "Season Kickoff Imminent!", desc: "Management expects great development from young prospects this season.", date: "Week 1" }
+            ],
+            transfers: [
+                { club: "Munich Knights", offerWage: 32000, offerFee: 18000000, status: "Interested" },
+                { club: "Milan Red", offerWage: 28000, offerFee: 15500000, status: "Scouting" }
+            ]
+        };
+
+        let radarChartInstance = null;
+
+        // --- MATCH ENGINE STATE ---
+        let matchEngine = {
+            active: false,
+            paused: false,
+            minute: 0,
+            homeScore: 0,
+            awayScore: 0,
+            speed: 1,
+            timerId: null,
+            opponent: "Red Devils",
+            isHome: true,
+            playerStats: { goals: 0, assists: 0, shots: 0, rating: 6.5 }
+        };
+
+        // --- PRESS QUESTIONS DATABASE ---
+        const pressQuestions = [
+            {
+                q: "You've been in impressive shape recently. Are you confident about starting every match?",
+                options: [
+                    { text: "I'll keep working hard to earn my spot.", trust: 5, morale: 5 },
+                    { text: "I'm clearly the best player in this position.", trust: -5, morale: 10 },
+                    { text: "It depends on the manager's tactics.", trust: 8, morale: 0 }
+                ]
+            },
+            {
+                q: "Rumors suggest rival clubs are scouting you. Would you consider a transfer?",
+                options: [
+                    { text: "I'm 100% committed to my current club.", trust: 10, morale: 5 },
+                    { text: "In football, you never know what happens.", trust: -8, morale: 0 },
+                    { text: "I focus only on the next match.", trust: 5, morale: 0 }
+                ]
+            }
+        ];
+
+        // --- DOUBLE ROUND-ROBIN SCHEDULE GENERATOR ---
+        function generateSeasonSchedule() {
+            const teams = DEFAULT_TEAMS.map(t => t.name); // 6 teams
+            const schedule = [];
+            
+            // Berger round-robin algorithm for 6 teams (5 rounds for 1st half)
+            const rotating = teams.slice(1); // 5 teams
+            const numRounds = teams.length - 1; // 5
+            
+            // First Half (Weeks 1 to 5)
+            for (let r = 0; r < numRounds; r++) {
+                const weekNum = r + 1;
+                const weekMatches = [];
+                
+                const rot = [];
+                for (let i = 0; i < rotating.length; i++) {
+                    rot.push(rotating[(i + r) % rotating.length]);
+                }
+                
+                // Match 1: fixed team teams[0] vs rot[0]
+                if (r % 2 === 0) {
+                    weekMatches.push({ home: teams[0], away: rot[0], homeScore: null, awayScore: null, played: false });
+                } else {
+                    weekMatches.push({ home: rot[0], away: teams[0], homeScore: null, awayScore: null, played: false });
+                }
+                
+                // Match 2: rot[1] vs rot[4]
+                weekMatches.push({ home: rot[1], away: rot[4], homeScore: null, awayScore: null, played: false });
+                
+                // Match 3: rot[2] vs rot[3]
+                weekMatches.push({ home: rot[2], away: rot[3], homeScore: null, awayScore: null, played: false });
+                
+                schedule.push({ week: weekNum, matches: weekMatches });
+            }
+            
+            // Second Half (Weeks 6 to 10): Reverse Home and Away for all matches
+            for (let r = 0; r < numRounds; r++) {
+                const weekNum = r + 1 + numRounds;
+                const firstHalfMatches = schedule[r].matches;
+                const weekMatches = firstHalfMatches.map(m => ({
+                    home: m.away,
+                    away: m.home,
+                    homeScore: null,
+                    awayScore: null,
+                    played: false
+                }));
+                schedule.push({ week: weekNum, matches: weekMatches });
+            }
+            
+            return schedule;
+        }
+
+        // --- INITIALIZATION ---
+        window.onload = function() {
+            loadSavedGame();
+            
+            // Ensure schedule exists & league has 6 teams with OVR
+            if (!gameState.schedule || gameState.schedule.length === 0 || gameState.league.length < 6) {
+                gameState.league = DEFAULT_TEAMS.map(t => ({ name: t.name, ovr: t.ovr, pts: 0, p: 0, gf: 0, ga: 0, wins: 0, draws: 0, losses: 0 }));
+                gameState.schedule = generateSeasonSchedule();
+            }
+
+            recalculateLeagueTable();
+            updateAllUI();
+            initRadarChart();
+            renderDrills();
+            renderPressScenario();
+        };
+
+        // --- AUTH & PLAY MODES ---
+        window.firebaseLogin = function() {
+            window.playAsGuest();
+        };
+
+        window.playAsGuest = function() {
+            document.getElementById('modal-login').classList.add('hidden');
+            if (!gameState.isCreated) {
+                document.getElementById('modal-creation').classList.remove('hidden');
+            }
+        };
+
+        // --- TAB NAVIGATION SYSTEM ---
+        window.switchTab = function(tabId) {
+            soundFx.playClick();
+            
+            const tabs = document.querySelectorAll('.tab-content');
+            tabs.forEach(tab => tab.classList.add('hidden'));
+
+            const navBtns = document.querySelectorAll('.nav-btn');
+            navBtns.forEach(btn => {
+                btn.classList.remove('text-white', 'bg-slate-800');
+                btn.classList.add('text-slate-400');
+            });
+
+            const selectedTab = document.getElementById(`tab-${tabId}`);
+            if (selectedTab) selectedTab.classList.remove('hidden');
+
+            const selectedNav = document.getElementById(`nav-${tabId}`);
+            if (selectedNav) {
+                selectedNav.classList.remove('text-slate-400');
+                selectedNav.classList.add('text-white', 'bg-slate-800');
+            }
+
+            if (tabId === 'training') {
+                renderDrills();
+            } else if (tabId === 'calendar') {
+                renderCalendarUI();
+            }
+        };
+
+        // --- OVERALL RATING CALCULATION ---
+        function getOverallRating() {
+            const attrs = gameState.player.attributes;
+            return Math.round((attrs.pace + attrs.shooting + attrs.passing + attrs.dribbling + attrs.tackling + attrs.stamina + attrs.vision + attrs.composure) / 8);
+        }
+
+        // --- TRAINING XP SCALING ---
+        function getTrainingCost(statVal) {
+            if (statVal < 70) return 30;
+            if (statVal < 80) return 50;
+            if (statVal < 90) return 90;
+            return 150;
+        }
+
+        // --- RECALCULATE LEAGUE STANDINGS FROM SCHEDULE ---
+        function recalculateLeagueTable() {
+            // Reset standings stats
+            gameState.league.forEach(t => {
+                t.p = 0;
+                t.pts = 0;
+                t.gf = 0;
+                t.ga = 0;
+                t.wins = 0;
+                t.draws = 0;
+                t.losses = 0;
+            });
+
+            if (!gameState.schedule) return;
+
+            gameState.schedule.forEach(w => {
+                w.matches.forEach(m => {
+                    if (m.played && m.homeScore !== null && m.awayScore !== null) {
+                        const homeTeam = gameState.league.find(t => t.name === m.home);
+                        const awayTeam = gameState.league.find(t => t.name === m.away);
+
+                        if (homeTeam && awayTeam) {
+                            homeTeam.p++;
+                            awayTeam.p++;
+                            homeTeam.gf += m.homeScore;
+                            homeTeam.ga += m.awayScore;
+                            awayTeam.gf += m.awayScore;
+                            awayTeam.ga += m.homeScore;
+
+                            if (m.homeScore > m.awayScore) {
+                                homeTeam.pts += 3;
+                                homeTeam.wins++;
+                                awayTeam.losses++;
+                            } else if (m.homeScore < m.awayScore) {
+                                awayTeam.pts += 3;
+                                awayTeam.wins++;
+                                homeTeam.losses++;
+                            } else {
+                                homeTeam.pts += 1;
+                                awayTeam.pts += 1;
+                                homeTeam.draws++;
+                                awayTeam.draws++;
+                            }
+                        }
+                    }
+                });
+            });
+        }
+
+        // --- GET CURRENT WEEK MATCH FOR USER ---
+        function getCurrentUserMatch() {
+            const currentWeekData = gameState.schedule.find(w => w.week === gameState.career.week);
+            if (!currentWeekData) return null;
+            return currentWeekData.matches.find(m => m.home === gameState.player.club || m.away === gameState.player.club);
+        }
+
+        // --- UI UPDATE LOOP ---
+        function updateAllUI() {
+            const p = gameState.player;
+            const c = gameState.career;
+
+            // Header
+            document.getElementById('header-player-name').innerText = p.name;
+            document.getElementById('header-position').innerText = p.position;
+            document.getElementById('header-club-name').innerText = `${p.club} • Premier League`;
+            document.getElementById('header-season-display').innerText = `Season ${c.season}, Week ${c.week}`;
+
+            document.getElementById('metric-morale').innerText = `${p.morale}%`;
+            document.getElementById('metric-energy').innerText = `${p.energy}%`;
+            document.getElementById('metric-trust').innerText = `${p.trust}%`;
+            document.getElementById('metric-value').innerText = `€${(p.value / 1000000).toFixed(1)}M`;
+            document.getElementById('metric-wage').innerText = `€${(p.wage / 1000).toFixed(0)}K/wk`;
+
+            // Dashboard
+            const ovr = getOverallRating();
+            document.getElementById('dash-ovr').innerText = ovr;
+            document.getElementById('dash-age').innerText = p.age;
+            document.getElementById('dash-morale').innerText = `${p.morale}%`;
+            document.getElementById('dash-value').innerText = `€${(p.value / 1000000).toFixed(1)}M`;
+            document.getElementById('dash-goals').innerText = c.seasonTotals.goals;
+            document.getElementById('dash-assists').innerText = c.seasonTotals.assists;
+            document.getElementById('dash-motm').innerText = c.seasonTotals.motm;
+            document.getElementById('dash-xp').innerText = `${p.xp} XP`;
+
+            const avgRating = c.seasonTotals.apps > 0 ? (c.seasonTotals.ratingSum / c.seasonTotals.apps).toFixed(1) : '0.0';
+            document.getElementById('dash-rating').innerText = avgRating;
+
+            // Next Match Info derived from Schedule
+            const userMatch = getCurrentUserMatch();
+            if (userMatch) {
+                const isHome = userMatch.home === p.club;
+                const oppName = isHome ? userMatch.away : userMatch.home;
+                matchEngine.opponent = oppName;
+                matchEngine.isHome = isHome;
+
+                document.getElementById('dash-next-match-title').innerText = `${userMatch.home} vs ${userMatch.away}`;
+                document.getElementById('dash-next-match-sub').innerText = `Premier League • Week ${c.week} ${isHome ? '(Home)' : '(Away)'}`;
+
+                document.getElementById('match-home-name').innerText = userMatch.home;
+                document.getElementById('match-away-name').innerText = userMatch.away;
+                document.getElementById('match-home-label').innerText = userMatch.home === p.club ? 'Your Club (Home)' : 'Home';
+                document.getElementById('match-away-label').innerText = userMatch.away === p.club ? 'Your Club (Away)' : 'Away';
+            }
+
+            // Career totals
+            document.getElementById('career-total-apps').innerText = c.totals.apps;
+            document.getElementById('career-total-goals').innerText = c.totals.goals;
+            document.getElementById('career-total-assists').innerText = c.totals.assists;
+            document.getElementById('career-total-trophies').innerText = c.totals.motm;
+
+            // Training UI
+            document.getElementById('train-available-xp').innerText = `${p.xp} XP`;
+            const trainBadge = document.getElementById('train-overall-badge');
+            if (trainBadge) trainBadge.innerText = `OVR: ${ovr}`;
+
+            updateLeagueTableUI();
+            updateNewsFeedUI();
+            updateMatchHistoryUI();
+            updateTransfersUI();
+        }
+
+        // --- LEAGUE TABLE UI ---
+        function updateLeagueTableUI() {
+            const tbody = document.getElementById('dash-league-tbody');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+
+            const sorted = [...gameState.league].sort((a, b) => b.pts - a.pts || (b.gf - b.ga) - (a.gf - a.ga) || b.gf - a.gf);
+
+            sorted.forEach((team, idx) => {
+                const tr = document.createElement('tr');
+                const isUser = team.name === gameState.player.club;
+                const ovr = team.ovr || getTeamOvr(team.name);
+                const badgeClass = ovr >= 90 ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' : ovr >= 85 ? 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' : ovr >= 75 ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-slate-800 text-slate-400 border-slate-700';
+
+                tr.className = isUser ? 'bg-emerald-500/10 text-emerald-400 font-bold' : 'hover:bg-slate-800/40';
+                tr.innerHTML = `
+                    <td class="p-2 font-mono">${idx + 1}</td>
+                    <td class="p-2">${team.name} ${isUser ? '⭐' : ''}</td>
+                    <td class="p-2 text-center"><span class="px-1.5 py-0.5 text-[10px] rounded font-bold border ${badgeClass}">${ovr}</span></td>
+                    <td class="p-2 text-center font-mono">${team.p}</td>
+                    <td class="p-2 text-center font-mono">${team.gf - team.ga}</td>
+                    <td class="p-2 text-right font-bold font-mono">${team.pts}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function updateNewsFeedUI() {
+            const feed = document.getElementById('dash-news-feed');
+            if (!feed) return;
+            feed.innerHTML = '';
+            
+            if (gameState.news.length === 0) {
+                feed.innerHTML = '<div class="text-xs text-slate-500 italic">No recent club news.</div>';
+                return;
+            }
+            
+            // Show latest 5 news items
+            [...gameState.news].reverse().slice(0, 5).forEach(n => {
+                feed.innerHTML += `
+                    <div class="border-l-2 border-emerald-500 pl-3 py-1">
+                        <div class="text-[10px] text-emerald-400 font-bold mb-0.5">${n.date}</div>
+                        <div class="text-sm font-bold text-white">${n.title}</div>
+                        <div class="text-xs text-slate-400">${n.desc}</div>
+                    </div>
+                `;
+            });
+        }
+
+        function updateMatchHistoryUI() {
+            const tbody = document.getElementById('career-history-tbody');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+            
+            if (gameState.career.matchHistory.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-500 italic">No matches played yet.</td></tr>';
+                return;
+            }
+            
+            [...gameState.career.matchHistory].reverse().forEach(m => {
+                tbody.innerHTML += `
+                    <tr class="hover:bg-slate-800/40">
+                        <td class="p-3">W${m.week}</td>
+                        <td class="p-3">${m.opponent}</td>
+                        <td class="p-3 text-center font-bold">${m.score}</td>
+                        <td class="p-3 text-center text-emerald-400">${m.goals}</td>
+                        <td class="p-3 text-center text-cyan-400">${m.assists}</td>
+                        <td class="p-3 text-center text-amber-400">${m.rating}</td>
+                    </tr>
+                `;
+            });
+        }
+
+        function updateTransfersUI() {
+            const list = document.getElementById('transfer-offers-list');
+            if (!list) return;
+            
+            list.innerHTML = '';
+            
+            if (gameState.transfers.length === 0) {
+                list.innerHTML = '<div class="text-xs text-slate-500 italic">No active offers. Check back next week.</div>';
+            } else {
+                gameState.transfers.forEach((t, i) => {
+                    list.innerHTML += `
+                        <div class="bg-slate-900 p-4 rounded-xl border border-slate-800 flex flex-wrap justify-between items-center gap-4">
+                            <div>
+                                <div class="font-bold text-white text-lg">${t.club}</div>
+                                <div class="text-xs text-slate-400">Fee: €${(t.offerFee/1000000).toFixed(1)}M • Wage: €${(t.offerWage/1000).toFixed(0)}K/wk</div>
+                                <div class="text-[10px] text-cyan-400 uppercase mt-1 font-bold">${t.status}</div>
+                            </div>
+                            <button onclick="acceptTransfer(${i})" class="bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold px-4 py-2 rounded-lg transition shadow-lg">
+                                Sign Contract
+                            </button>
+                        </div>
+                    `;
+                });
+            }
+        }
+
+        window.acceptTransfer = function(idx) {
+            const t = gameState.transfers[idx];
+            gameState.player.club = t.club;
+            gameState.player.wage = t.offerWage;
+            gameState.player.value = t.offerFee;
+            gameState.transfers = [];
+            
+            gameState.news.push({
+                title: "Transfer Completed!",
+                desc: `You have officially signed with ${t.club}.`,
+                date: `Week ${gameState.career.week}`
+            });
+            
+            showMsg("Transfer Successful", `You are now playing for ${t.club}! Your wages have increased.`);
+            updateAllUI();
+            saveGame();
+        };
+
+        function initRadarChart() {
+            const ctx = document.getElementById('attributes-radar-chart');
+            if (!ctx) return;
+            
+            if (radarChartInstance) radarChartInstance.destroy();
+            
+            const attrs = gameState.player.attributes;
+            radarChartInstance = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: ['Pace', 'Shooting', 'Passing', 'Dribbling', 'Tackling', 'Stamina', 'Vision', 'Composure'],
+                    datasets: [{
+                        label: 'Attributes',
+                        data: [attrs.pace, attrs.shooting, attrs.passing, attrs.dribbling, attrs.tackling, attrs.stamina, attrs.vision, attrs.composure],
+                        backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                        borderColor: '#10b981',
+                        pointBackgroundColor: '#10b981',
+                        borderWidth: 2
+                    }]
+                },
+                options: { 
+                    scales: { r: { min: 0, max: 100, ticks: { display: false } } }, 
+                    plugins: { legend: { display: false } } 
+                }
+            });
+        }
+
+        function renderDrills() {
+            const list = document.getElementById('drills-list');
+            if (!list) return;
+            list.innerHTML = '';
+            
+            const attrs = ['pace', 'shooting', 'passing', 'dribbling', 'tackling', 'stamina', 'vision', 'composure'];
+            
+            attrs.forEach(attr => {
+                const val = gameState.player.attributes[attr];
+                const cost = getTrainingCost(val);
+                const canAfford = gameState.player.xp >= cost;
+                
+                list.innerHTML += `
+                    <div class="flex justify-between items-center p-3 bg-slate-900 rounded-lg border border-slate-800">
+                        <div class="capitalize text-slate-200 font-bold">${attr} <span class="text-emerald-400 ml-2 font-mono">${val}</span></div>
+                        <button onclick="trainAttribute('${attr}')" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold px-3 py-1.5 rounded transition ${!canAfford ? 'opacity-50 cursor-not-allowed' : ''}" ${!canAfford ? 'disabled' : ''}>
+                            Train (${cost} XP)
+                        </button>
+                    </div>
+                `;
+            });
+            
+            if (radarChartInstance) initRadarChart();
+        }
+
+        window.trainAttribute = function(attr) {
+            const val = gameState.player.attributes[attr];
+            const cost = getTrainingCost(val);
+            
+            if (gameState.player.xp >= cost && val < 99) {
+                gameState.player.xp -= cost;
+                gameState.player.attributes[attr]++;
+                soundFx.playClick();
+                updateAllUI();
+                renderDrills();
+                saveGame();
+            }
+        };
+
+        window.renderCalendarUI = function() {
+            const grid = document.getElementById('calendar-grid');
+            const filter = document.getElementById('calendar-week-filter');
+            if (!grid || !filter) return;
+            
+            grid.innerHTML = '';
+            const selectedWeek = filter.value;
+            
+            gameState.schedule.forEach(w => {
+                if (selectedWeek !== 'all' && parseInt(selectedWeek) !== w.week) return;
+                
+                w.matches.forEach(m => {
+                    const isUser = m.home === gameState.player.club || m.away === gameState.player.club;
+                    const userHighlight = isUser ? 'border-emerald-500/50 bg-emerald-950/20' : 'border-slate-800 bg-slate-900';
+                    
+                    let scoreText = 'vs';
+                    if (m.played) scoreText = `${m.homeScore} - ${m.awayScore}`;
+                    
+                    grid.innerHTML += `
+                        <div class="p-4 rounded-xl border ${userHighlight} flex flex-col justify-center text-center space-y-2">
+                            <div class="text-[10px] text-slate-400 font-bold uppercase">Week ${w.week}</div>
+                            <div class="flex justify-between items-center text-sm font-bold">
+                                <span class="${m.home === gameState.player.club ? 'text-emerald-400' : 'text-slate-200'}">${m.home}</span>
+                                <span class="px-2 py-1 bg-slate-800 rounded text-slate-300 font-mono">${scoreText}</span>
+                                <span class="${m.away === gameState.player.club ? 'text-emerald-400' : 'text-slate-200'}">${m.away}</span>
+                            </div>
+                        </div>
+                    `;
+                });
+            });
+        };
+
+        window.startMatchSimulation = function() {
+            if (matchEngine.active) return;
+            
+            matchEngine.active = true;
+            matchEngine.paused = false;
+            matchEngine.minute = 0;
+            matchEngine.homeScore = 0;
+            matchEngine.awayScore = 0;
+            matchEngine.playerStats = { goals: 0, assists: 0, shots: 0, rating: 6.0 };
+            
+            document.getElementById('match-status-label').innerText = "LIVE";
+            document.getElementById('match-score-home').innerText = 0;
+            document.getElementById('match-score-away').innerText = 0;
+            document.getElementById('btn-start-match').classList.add('hidden');
+            document.getElementById('btn-pause-match').classList.remove('hidden');
+            
+            const log = document.getElementById('commentary-log');
+            if (log) log.innerHTML = `<div class="text-emerald-400 font-bold">0' Kickoff! The match is underway.</div>`;
+            
+            soundFx.playWhistle();
+            runMatchLoop();
+        };
+
+        function runMatchLoop() {
+            if (!matchEngine.active || matchEngine.paused) return;
+            
+            matchEngine.timerId = setTimeout(() => {
+                matchEngine.minute++;
+                document.getElementById('match-timer').innerText = `${matchEngine.minute}:00`;
+                
+                simulateMatchEvent();
+                
+                if (matchEngine.minute === 45) {
+                    const log = document.getElementById('commentary-log');
+                    if (log) log.innerHTML += `<div class="text-amber-400 font-bold">45' Half-time whistle!</div>`;
+                }
+                
+                // Random Decision Encounter Logic
+                if (matchEngine.minute > 20 && matchEngine.minute < 80 && Math.random() < 0.05) {
+                    triggerDecisionModal();
+                    return; // Pause the loop to let the user answer
+                }
+                
+                if (matchEngine.minute >= 90) {
+                    finishMatch();
+                } else {
+                    runMatchLoop();
+                }
+            }, 1000 / matchEngine.speed);
+        }
+
+        // --- MATCH ENGINE CALCULATION HELPER ---
+        function calculateMatchProbabilities(homeTeamName, awayTeamName) {
+            const homeOvr = getTeamOvr(homeTeamName);
+            const awayOvr = getTeamOvr(awayTeamName);
+            
+            // 10% performance boost for Home Field Advantage (internal factor)
+            const homePower = homeOvr * 1.10;
+            const awayPower = awayOvr;
+            
+            const homeChance = homePower / (homePower + awayPower);
+            return { homeOvr, awayOvr, homePower, awayPower, homeChance };
+        }
+
+        function simulateMatchEvent() {
+            const homeTeam = matchEngine.isHome ? gameState.player.club : matchEngine.opponent;
+            const awayTeam = matchEngine.isHome ? matchEngine.opponent : gameState.player.club;
+            
+            const { homePower, awayPower, homeChance } = calculateMatchProbabilities(homeTeam, awayTeam);
+            
+            // Determine attacking side based on team power & home advantage
+            const isHomeAttack = Math.random() < homeChance;
+            const isUserTeamAttack = (matchEngine.isHome && isHomeAttack) || (!matchEngine.isHome && !isHomeAttack);
+
+            // Goal conversion chance scaled by relative team strengths
+            const attackingPower = isHomeAttack ? homePower : awayPower;
+            const defendingPower = isHomeAttack ? awayPower : homePower;
+            const baseGoalProb = 0.22 * Math.pow(attackingPower / defendingPower, 1.2);
+            const isGoal = Math.random() < baseGoalProb;
+
+            const log = document.getElementById('commentary-log');
+            if (!log) return;
+
+            if (isGoal) {
+                if (isUserTeamAttack) {
+                    if (matchEngine.isHome) matchEngine.homeScore++;
+                    else matchEngine.awayScore++;
+
+                    const userGoal = Math.random() < 0.45;
+                    if (userGoal) {
+                        matchEngine.playerStats.goals++;
+                        matchEngine.playerStats.rating += 0.8;
+                        soundFx.playGoal();
+                        log.innerHTML += `<div class="text-emerald-400 font-bold">${matchEngine.minute}' GOAL! ${gameState.player.name} scores a brilliant shot!</div>`;
+                    } else {
+                        log.innerHTML += `<div class="text-emerald-300">${matchEngine.minute}' GOAL! ${gameState.player.club} scores!</div>`;
+                    }
+                } else {
+                    if (matchEngine.isHome) matchEngine.awayScore++;
+                    else matchEngine.homeScore++;
+
+                    const scoringClub = matchEngine.isHome ? matchEngine.opponent : gameState.player.club;
+                    log.innerHTML += `<div class="text-rose-400">${matchEngine.minute}' GOAL! ${scoringClub} scores!</div>`;
+                }
+
+                document.getElementById('match-score-home').innerText = matchEngine.homeScore;
+                document.getElementById('match-score-away').innerText = matchEngine.awayScore;
+            } else {
+                if (isUserTeamAttack && Math.random() < 0.35) {
+                    matchEngine.playerStats.shots++;
+                    log.innerHTML += `<div class="text-slate-300">${matchEngine.minute}' Shot by ${gameState.player.name} saved by keeper.</div>`;
+                }
+            }
+
+            document.getElementById('live-goals').innerText = matchEngine.playerStats.goals;
+            document.getElementById('live-assists').innerText = matchEngine.playerStats.assists;
+            document.getElementById('live-shots').innerText = matchEngine.playerStats.shots;
+            document.getElementById('live-rating').innerText = matchEngine.playerStats.rating.toFixed(1);
+
+            log.scrollTop = log.scrollHeight;
+        }
+
+        window.togglePauseMatch = function() {
+            matchEngine.paused = !matchEngine.paused;
+            const btn = document.getElementById('btn-pause-match');
+            if (matchEngine.paused) {
+                btn.innerText = "Resume";
+            } else {
+                btn.innerText = "Pause";
+                runMatchLoop();
+            }
+        };
+
+        window.setSpeed = function(spd) {
+            matchEngine.speed = spd;
+            document.querySelectorAll('.speed-btn').forEach(b => {
+                b.className = 'speed-btn bg-slate-800 text-slate-300 font-bold px-3 py-1 rounded text-xs';
+            });
+            const activeBtn = document.getElementById(`btn-speed-${spd}`);
+            if (activeBtn) activeBtn.className = 'speed-btn bg-emerald-500 text-slate-950 font-bold px-3 py-1 rounded text-xs';
+        };
+
+        window.quickSimMatch = function() {
+            if (!matchEngine.active) startMatchSimulation();
+            matchEngine.speed = 100;
+        };
+
+        function triggerDecisionModal() {
+            matchEngine.paused = true;
+            document.getElementById('decision-minute').innerText = `${matchEngine.minute}'`;
+
+            const optionsDiv = document.getElementById('decision-options');
+            optionsDiv.innerHTML = `
+                <button onclick="resolveDecision('power')" class="w-full bg-slate-900 hover:bg-slate-800 border border-slate-700 p-3 rounded-xl text-left text-xs font-bold text-white transition">
+                    🎯 Power Shot Low Corner (Shooting)
+                </button>
+                <button onclick="resolveDecision('chip')" class="w-full bg-slate-900 hover:bg-slate-800 border border-slate-700 p-3 rounded-xl text-left text-xs font-bold text-white transition">
+                    ⚡ Chip the Goalkeeper (Dribbling)
+                </button>
+                <button onclick="resolveDecision('pass')" class="w-full bg-slate-900 hover:bg-slate-800 border border-slate-700 p-3 rounded-xl text-left text-xs font-bold text-white transition">
+                    🧠 Unselfish Square Pass (Vision)
+                </button>
+            `;
+
+            document.getElementById('modal-decision').classList.remove('hidden');
+            document.getElementById('modal-decision').classList.add('flex');
+        }
+
+        window.resolveDecision = function(type) {
+            document.getElementById('modal-decision').classList.add('hidden');
+            document.getElementById('modal-decision').classList.remove('flex');
+
+            const log = document.getElementById('commentary-log');
+            if (type === 'power' || type === 'chip') {
+                if (Math.random() < 0.6) {
+                    matchEngine.homeScore++;
+                    matchEngine.playerStats.goals++;
+                    matchEngine.playerStats.rating += 1.0;
+                    soundFx.playGoal();
+                    if (log) log.innerHTML += `<div class="text-emerald-400 font-bold">${matchEngine.minute}' GOAL! Magnificent strike after taking the decision!</div>`;
+                } else {
+                    if (log) log.innerHTML += `<div class="text-amber-400">${matchEngine.minute}' Missed opportunity on goal!</div>`;
+                }
+            } else {
+                matchEngine.playerStats.assists++;
+                matchEngine.playerStats.rating += 0.7;
+                matchEngine.homeScore++;
+                if (log) log.innerHTML += `<div class="text-cyan-400 font-bold">${matchEngine.minute}' GREAT ASSIST! Teammate taps it in!</div>`;
+            }
+
+            document.getElementById('match-score-home').innerText = matchEngine.homeScore;
+            document.getElementById('live-goals').innerText = matchEngine.playerStats.goals;
+            document.getElementById('live-assists').innerText = matchEngine.playerStats.assists;
+            document.getElementById('live-rating').innerText = matchEngine.playerStats.rating.toFixed(1);
+
+            matchEngine.paused = false;
+            runMatchLoop();
+        };
+
+        function finishMatch() {
+            matchEngine.active = false;
+            clearTimeout(matchEngine.timerId);
+
+            document.getElementById('match-status-label').innerText = "FULL TIME";
+            document.getElementById('btn-start-match').classList.remove('hidden');
+            document.getElementById('btn-pause-match').classList.add('hidden');
+
+            const p = gameState.player;
+            const c = gameState.career;
+
+            // Record match result into Schedule Data
+            const userMatch = getCurrentUserMatch();
+            if (userMatch) {
+                userMatch.homeScore = matchEngine.homeScore;
+                userMatch.awayScore = matchEngine.awayScore;
+                userMatch.played = true;
+            }
+
+            // Simulate remaining non-user matches for this week
+            simulateOtherWeekMatches(c.week);
+            recalculateLeagueTable();
+
+            const xpEarned = Math.round(matchEngine.playerStats.rating * 8);
+            p.xp += xpEarned;
+
+            c.totals.apps++;
+            c.totals.goals += matchEngine.playerStats.goals;
+            c.totals.assists += matchEngine.playerStats.assists;
+            c.totals.ratingSum += matchEngine.playerStats.rating;
+
+            const isMotm = matchEngine.playerStats.rating >= 8.2;
+            if (isMotm) {
+                c.totals.motm++;
+                c.seasonTotals.motm++;
+            }
+
+            c.seasonTotals.apps++;
+            c.seasonTotals.goals += matchEngine.playerStats.goals;
+            c.seasonTotals.assists += matchEngine.playerStats.assists;
+            c.seasonTotals.ratingSum += matchEngine.playerStats.rating;
+
+            c.matchHistory.push({
+                week: c.week,
+                opponent: matchEngine.opponent,
+                score: `${matchEngine.homeScore}-${matchEngine.awayScore}`,
+                goals: matchEngine.playerStats.goals,
+                assists: matchEngine.playerStats.assists,
+                rating: matchEngine.playerStats.rating.toFixed(1)
+            });
+
+            document.getElementById('post-match-score').innerText = `${p.club} ${matchEngine.homeScore} - ${matchEngine.awayScore} ${matchEngine.opponent}`;
+            document.getElementById('post-match-rating').innerText = matchEngine.playerStats.rating.toFixed(1);
+            document.getElementById('post-match-goals').innerText = matchEngine.playerStats.goals;
+            document.getElementById('post-match-assists').innerText = matchEngine.playerStats.assists;
+            document.getElementById('post-match-xp').innerText = `+${xpEarned} XP`;
+
+            const motmBadge = document.getElementById('post-match-motm-badge');
+            if (isMotm) motmBadge.classList.remove('hidden');
+            else motmBadge.classList.add('hidden');
+
+            document.getElementById('modal-post-match').classList.remove('hidden');
+            document.getElementById('modal-post-match').classList.add('flex');
+        }
+
+        // --- SIMULATE NON-USER MATCHES IN A WEEK ---
+        function simulateOtherWeekMatches(weekNum) {
+            const weekData = gameState.schedule.find(w => w.week === weekNum);
+            if (!weekData) return;
+
+            weekData.matches.forEach(m => {
+                if (!m.played) {
+                    const { homePower, awayPower, homeChance } = calculateMatchProbabilities(m.home, m.away);
+                    let hGoals = 0;
+                    let aGoals = 0;
+
+                    for (let i = 0; i < 8; i++) {
+                        if (Math.random() < 0.32) {
+                            if (Math.random() < homeChance) {
+                                if (Math.random() < 0.22 * Math.pow(homePower / awayPower, 1.1)) hGoals++;
+                            } else {
+                                if (Math.random() < 0.22 * Math.pow(awayPower / homePower, 1.1)) aGoals++;
+                            }
+                        }
+                    }
+
+                    m.homeScore = hGoals;
+                    m.awayScore = aGoals;
+                    m.played = true;
+                }
+            });
+        }
+
+        window.closePostMatchModal = function() {
+            document.getElementById('modal-post-match').classList.add('hidden');
+            document.getElementById('modal-post-match').classList.remove('flex');
+            
+            advanceWeek(false);
+            switchTab('dashboard');
+        };
+
+        // --- ADVANCE WEEK CONTROLLER ---
+        window.advanceWeek = function(simUserMatch = true) {
+            const currentWeek = gameState.career.week;
+
+            if (simUserMatch) {
+                // User skipped playing matchday manually
+                const userMatch = getCurrentUserMatch();
+                if (userMatch && !userMatch.played) {
+                    // Simulate user team match using overall rating weights
+                    const { homePower, awayPower, homeChance } = calculateMatchProbabilities(userMatch.home, userMatch.away);
+                    let hGoals = 0;
+                    let aGoals = 0;
+                    for (let i = 0; i < 8; i++) {
+                        if (Math.random() < 0.32) {
+                            if (Math.random() < homeChance) {
+                                if (Math.random() < 0.22 * Math.pow(homePower / awayPower, 1.1)) hGoals++;
+                            } else {
+                                if (Math.random() < 0.22 * Math.pow(awayPower / homePower, 1.1)) aGoals++;
+                            }
+                        }
+                    }
+
+                    userMatch.homeScore = hGoals;
+                    userMatch.awayScore = aGoals;
+                    userMatch.played = true;
+
+                    const userGoals = Math.random() < 0.4 ? Math.floor(Math.random() * 2) + 1 : 0;
+                    const userAssists = Math.random() < 0.3 ? 1 : 0;
+                    const rating = parseFloat((Math.random() * 2.5 + 6.0).toFixed(1));
+
+                    gameState.player.xp += 20;
+                    gameState.career.totals.apps++;
+                    gameState.career.totals.goals += userGoals;
+                    gameState.career.totals.assists += userAssists;
+                    gameState.career.totals.ratingSum += rating;
+
+                    gameState.career.seasonTotals.apps++;
+                    gameState.career.seasonTotals.goals += userGoals;
+                    gameState.career.seasonTotals.assists += userAssists;
+                    gameState.career.seasonTotals.ratingSum += rating;
+
+                    gameState.career.matchHistory.push({
+                        week: currentWeek,
+                        opponent: userMatch.home === gameState.player.club ? userMatch.away : userMatch.home,
+                        score: `${userMatch.homeScore}-${userMatch.awayScore}`,
+                        goals: userGoals,
+                        assists: userAssists,
+                        rating: rating
+                    });
+                }
+
+                // Simulate all other matches for current week
+                simulateOtherWeekMatches(currentWeek);
+                recalculateLeagueTable();
+            }
+
+            // Check End of Season (10 Weeks Total)
+            if (currentWeek >= 10) {
+                showEndSeasonModal();
+                return;
+            }
+
+            // Next week
+            gameState.career.week++;
+            gameState.career.pressAnswered = false;
+
+            renderPressScenario();
+            updateAllUI();
+            saveGame();
+        };
+
+        // --- END OF SEASON SUMMARY MODAL ---
+        function showEndSeasonModal() {
+            recalculateLeagueTable();
+            const sorted = [...gameState.league].sort((a, b) => b.pts - a.pts || (b.gf - b.ga) - (a.gf - a.ga));
+            const champion = sorted[0];
+            const isUserChamp = champion.name === gameState.player.club;
+
+            let tableHTML = `
+                <div class="mt-3 overflow-x-auto bg-slate-900 rounded-lg border border-slate-800 p-2">
+                    <table class="w-full text-[10px] text-left">
+                        <thead class="text-slate-400 uppercase">
+                            <tr>
+                                <th class="p-1">#</th>
+                                <th class="p-1">Club</th>
+                                <th class="p-1 text-center">GD</th>
+                                <th class="p-1 text-right">Pts</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-800">
+            `;
+
+            sorted.forEach((team, idx) => {
+                const isUser = team.name === gameState.player.club;
+                tableHTML += `
+                    <tr class="${isUser ? 'text-emerald-400 font-bold' : 'text-slate-300'}">
+                        <td class="p-1">${idx + 1}</td>
+                        <td class="p-1">${team.name}</td>
+                        <td class="p-1 text-center">${team.gf - team.ga}</td>
+                        <td class="p-1 text-right font-bold">${team.pts}</td>
+                    </tr>
+                `;
+            });
+            tableHTML += `</tbody></table></div>`;
+
+            let fixturesHTML = `
+                <div class="mt-3 bg-slate-900 rounded-lg border border-slate-800 p-2 max-h-24 overflow-y-auto pr-1">
+                    <div class="text-[10px] text-slate-400 uppercase font-bold mb-1">Your Season Results</div>
+            `;
+            gameState.career.matchHistory.slice(-10).forEach(m => {
+                fixturesHTML += `<div class="text-[10px] text-slate-300 py-0.5 flex justify-between border-b border-slate-800 last:border-0"><span>W${m.week} vs ${m.opponent}</span><span class="font-bold text-emerald-400">${m.score}</span></div>`;
+            });
+            fixturesHTML += `</div>`;
+
+            const card = document.getElementById('end-season-summary-card');
+            if (card) {
+                card.innerHTML = `
+                    <div class="p-3 bg-indigo-950/40 border border-indigo-500/30 rounded-xl text-center">
+                        <span class="text-xs text-indigo-300 font-bold uppercase">League Champion</span>
+                        <div class="font-display text-2xl font-extrabold text-amber-400 mt-1">${champion.name} 🏆</div>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-3 text-xs pt-2">
+                        <div class="p-2.5 bg-slate-900 rounded-lg border border-slate-800">
+                            <span class="text-slate-400">Finish Position:</span>
+                            <div class="font-bold text-lg ${isUserChamp ? 'text-amber-400' : 'text-slate-200'}">#${sorted.findIndex(t => t.name === gameState.player.club) + 1} Place</div>
+                        </div>
+                        <div class="p-2.5 bg-slate-900 rounded-lg border border-slate-800">
+                            <span class="text-slate-400">Season Goals:</span>
+                            <div class="font-bold text-lg text-emerald-400">${gameState.career.totals.goals} Goals</div>
+                        </div>
+                    </div>
+                    ${tableHTML}
+                    ${fixturesHTML}
+                `;
+            }
+
+            document.getElementById('modal-end-season').classList.remove('hidden');
+            document.getElementById('modal-end-season').classList.add('flex');
+        }
+
+        window.startNextSeason = function() {
+            document.getElementById('modal-end-season').classList.add('hidden');
+            document.getElementById('modal-end-season').classList.remove('flex');
+
+            gameState.career.season++;
+            gameState.career.week = 1;
+            gameState.career.pressAnswered = false;
+
+            // Reset Season Stats
+            gameState.career.seasonTotals = { apps: 0, goals: 0, assists: 0, ratingSum: 0, motm: 0 };
+
+            // Reset schedule & standings for new season
+            gameState.league = DEFAULT_TEAMS.map(t => ({ name: t.name, ovr: t.ovr, pts: 0, p: 0, gf: 0, ga: 0, wins: 0, draws: 0, losses: 0 }));
+            gameState.schedule = generateSeasonSchedule();
+
+            gameState.news.push({
+                title: `Season ${gameState.career.season} Begins!`,
+                desc: "A fresh campaign kicks off with all 6 clubs battling for the title.",
+                date: `Week 1`
+            });
+
+            updateAllUI();
+            saveGame();
+            switchTab('dashboard');
+        };
+
+        // --- PRESS SYSTEM ---
+        function renderPressScenario() {
+            const container = document.getElementById('press-options-container');
+            const qText = document.getElementById('press-question-text');
+            if (!container || !qText) return;
+
+            if (gameState.career.pressAnswered) {
+                qText.innerText = "You have completed your media commitments for this week.";
+                container.innerHTML = '<div class="text-xs text-slate-500 italic">Check back next week for new interviews.</div>';
+                return;
+            }
+
+            const qObj = pressQuestions[(gameState.career.week - 1) % pressQuestions.length];
+            qText.innerText = `"${qObj.q}"`;
+            container.innerHTML = '';
+
+            qObj.options.forEach((opt, idx) => {
+                const btn = document.createElement('button');
+                btn.className = "w-full bg-slate-800 hover:bg-slate-700 p-3 rounded-xl text-left text-xs text-slate-200 transition font-medium border border-slate-700";
+                btn.innerText = opt.text;
+                btn.onclick = function() {
+                    gameState.player.trust = Math.min(100, Math.max(0, gameState.player.trust + opt.trust));
+                    gameState.player.morale = Math.min(100, Math.max(0, gameState.player.morale + opt.morale));
+                    gameState.career.pressAnswered = true;
+                    soundFx.playClick();
+                    showMsg("Interview Result", "Your response was published in the post-match paper.");
+                    renderPressScenario();
+                    updateAllUI();
+                };
+                container.appendChild(btn);
+            });
+        }
+
+        // --- CREATION HANDLER ---
+        window.handleCareerCreation = function(e) {
+            e.preventDefault();
+            soundFx.playClick();
+
+            gameState.player.name = document.getElementById('create-name').value;
+            gameState.player.position = document.getElementById('create-position').value;
+            gameState.player.nationality = document.getElementById('create-nationality').value;
+            gameState.player.club = document.getElementById('create-club').value;
+            gameState.player.age = Math.floor(Math.random() * 4) + 16;
+
+            // BUG FIX: Correctly map strings instead of saving entire objects to the name property.
+            gameState.league = DEFAULT_TEAMS.map(t => ({ name: t.name, ovr: t.ovr, pts: 0, p: 0, gf: 0, ga: 0, wins: 0, draws: 0, losses: 0 }));
+            gameState.schedule = generateSeasonSchedule();
+
+            gameState.isCreated = true;
+            document.getElementById('modal-creation').classList.add('hidden');
+            updateAllUI();
+            saveGame();
+        };
+
+        // --- UTILS & SAVE ---
+        function saveGame() {
+            localStorage.setItem('soccer_career_save_v2', JSON.stringify(gameState));
+        }
+
+        function loadSavedGame() {
+            const data = localStorage.getItem('soccer_career_save_v2');
+            if (data) {
+                try {
+                    gameState = JSON.parse(data);
+                    if (gameState.isCreated === undefined) {
+                        gameState.isCreated = true;
+                    }
+                    if (!gameState.career.seasonTotals) {
+                        gameState.career.seasonTotals = { apps: 0, goals: 0, assists: 0, ratingSum: 0, motm: 0 };
+                    }
+                    // Ensure teams in league data have overall rating attached
+                    if (gameState.league) {
+                        gameState.league.forEach(t => {
+                            // Save file patch: fix corrupted saves where object was mapped into name directly
+                            if (typeof t.name === 'object' && t.name !== null && t.name.name) {
+                                t.name = t.name.name;
+                            }
+                            if (!t.ovr) t.ovr = getTeamOvr(t.name);
+                        });
+                    }
+                } catch(e) { console.error(e); }
+            }
+        }
+
+        window.resetCareer = function() {
+            document.getElementById('modal-confirm').classList.remove('hidden');
+            document.getElementById('modal-confirm').classList.add('flex');
+        };
+
+        window.closeConfirmModal = function() {
+            document.getElementById('modal-confirm').classList.add('hidden');
+            document.getElementById('modal-confirm').classList.remove('flex');
+        };
+
+        window.executeReset = function() {
+            localStorage.removeItem('soccer_career_save_v2');
+            location.reload();
+        };
+
+        function showMsg(title, text) {
+            document.getElementById('msg-title').innerText = title;
+            document.getElementById('msg-text').innerText = text;
+            document.getElementById('modal-message').classList.remove('hidden');
+            document.getElementById('modal-message').classList.add('flex');
+        }
+
+        window.closeMsgModal = function() {
+            document.getElementById('modal-message').classList.add('hidden');
+            document.getElementById('modal-message').classList.remove('flex');
+        };
+    </script>
+</body>
+</html>
